@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Tennis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --clay: #c4622d;
+            --clay-dark: #8b3d17;
+            --net: #f5e6d3;
+            --white: #fdfaf7;
+            --dark: #1a1208;
+            --accent: #f0c040;
+        }
+
+        body {
+            background: var(--clay);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'DM Sans', sans-serif;
+            padding: 1rem;
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
+        }
+
+        .court-lines {
+            position: fixed; inset: 0; pointer-events: none; overflow: hidden; opacity: 0.08;
+        }
+        .court-lines::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 800px; height: 500px;
+            border: 3px solid white;
+            border-radius: 2px;
+        }
+        .court-lines::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 2px; height: 500px;
+            background: white;
+        }
+
+        .card {
+            background: var(--white);
+            border-radius: 4px;
+            width: 100%;
+            max-width: 480px;
+            overflow: hidden;
+            box-shadow: 0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.1);
+        }
+
+        /* Header */
+        .card-header {
+            background: var(--dark);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-header h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            color: var(--white);
+            font-size: 1.4rem;
+            letter-spacing: 0.15em;
+        }
+        .status-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            padding: 0.3rem 0.7rem;
+            border-radius: 2px;
+            text-transform: uppercase;
+        }
+        .status-badge.live {
+            background: #e53e3e;
+            color: white;
+            animation: pulse-badge 1.5s infinite;
+        }
+        .status-badge.paused { background: #718096; color: white; }
+        .status-badge.finished { background: var(--accent); color: var(--dark); }
+
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Surface tag */
+        .meta {
+            background: var(--clay-dark);
+            padding: 0.35rem 1.5rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .meta span {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.75);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+        #surface { color: var(--accent); font-weight: 600; }
+
+        /* Scoreboard */
+        #scoreboard {
+            padding: 1.5rem;
+            transition: background 0.3s;
+        }
+        #scoreboard.updated { background: #fffbf0; }
+
+        .player-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto auto;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 0;
+        }
+        .player-row + .player-row {
+            border-top: 1px solid rgba(0,0,0,0.07);
+        }
+
+        .player-name {
+            font-size: 1.05rem;
+            font-weight: 500;
+            color: var(--dark);
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .serve-dot {
+            width: 8px; height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 6px var(--accent);
+            transition: opacity 0.2s;
+        }
+
+        /* Sets display */
+        .sets-section {
+            padding: 0 1.5rem 1rem;
+        }
+        .sets-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .sets-table td {
+            padding: 0.2rem 0.5rem;
+            text-align: center;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.3rem;
+            color: #666;
+        }
+        .sets-table td.set-won { color: var(--dark); }
+        .sets-table .set-header-row td {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #bbb;
+            padding-bottom: 0.1rem;
+            font-weight: 400;
+        }
+
+        /* Main score grid */
+        .main-scores {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 28px 60px 60px;
+            gap: 0;
+            row-gap: 0;
+        }
+        .header-row > * {
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #bbb;
+            padding-bottom: 0.4rem;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .header-row .col-right { text-align: center; }
+
+        .p-row {
+            display: contents;
+        }
+        .p-row > * {
+            padding: 0.6rem 0;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+        }
+        .p-row .col-right {
+            justify-content: center;
+        }
+
+        .games-val {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2.2rem;
+            color: var(--dark);
+            line-height: 1;
+        }
+        .points-val {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2.2rem;
+            color: var(--clay);
+            line-height: 1;
+        }
+
+        /* Footer */
+        .card-footer {
+            background: #f7f4f0;
+            padding: 0.75rem 1.5rem;
+            border-top: 1px solid rgba(0,0,0,0.06);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #live-dot {
+            width: 7px; height: 7px;
+            background: #e53e3e;
+            border-radius: 50%;
+            animation: pulse-dot 1.5s infinite;
+            flex-shrink: 0;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.6; }
+        }
+        .footer-text {
+            font-size: 0.72rem;
+            color: #999;
+            letter-spacing: 0.03em;
+        }
+
+        @media (max-width: 380px) {
+            .games-val, .points-val { font-size: 1.7rem; }
+            .player-name { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="court-lines"></div>
+
+<div class="card">
+    <!-- Header -->
+    <div class="card-header">
+        <h1>🎾 Live Tenis</h1>
+        <span id="status-text" class="status-badge live">LIVE</span>
+    </div>
+
+    <!-- Meta -->
+    <div class="meta">
+        <span>Povrch: <span id="surface">—</span></span>
+    </div>
+
+    <!-- Sety -->
+    <div class="sets-section" id="sets-section" style="padding-top:1rem;">
+        <div style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:#bbb;margin-bottom:0.4rem;padding-left:0.25rem;font-family:'DM Sans',sans-serif;">Sety</div>
+        <div id="sets-rows">
+            <!-- dynamicky generované -->
+        </div>
+    </div>
+
+    <!-- Hlavné skóre -->
+    <div class="main-scores">
+        <!-- Hlavičky -->
+        <div class="header-row" style="display:contents">
+            <div></div>
+            <div class="col-right" style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:#bbb;padding-bottom:0.4rem;font-family:'DM Sans',sans-serif;display:flex;align-items:flex-end;justify-content:center;">S</div>
+            <div class="col-right" style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:#bbb;padding-bottom:0.4rem;font-family:'DM Sans',sans-serif;display:flex;align-items:flex-end;justify-content:center;">Gem</div>
+            <div class="col-right" style="font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:#bbb;padding-bottom:0.4rem;font-family:'DM Sans',sans-serif;display:flex;align-items:flex-end;justify-content:center;">Bod</div>
+        </div>
+
+        <!-- Hráč 1 -->
+        <div class="p-row">
+            <div class="player-name" style="border-top:1px solid rgba(0,0,0,0.06);">
+                <span class="serve-dot" id="serve-p1"></span>
+                <span id="p1-name">Hráč 1</span>
+            </div>
+            <div class="col-right" style="border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;"></div>
+            <div class="col-right" style="border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;">
+                <span class="games-val" id="games-p1">0</span>
+            </div>
+            <div class="col-right" style="border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;">
+                <span class="points-val" id="points-p1">0</span>
+            </div>
+        </div>
+
+        <!-- Hráč 2 -->
+        <div class="p-row">
+            <div class="player-name" style="border-top:1px solid rgba(0,0,0,0.06);">
+                <span class="serve-dot" id="serve-p2"></span>
+                <span id="p2-name">Hráč 2</span>
+            </div>
+            <div class="col-right" style="border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;"></div>
+            <div class="col-right" style="border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;">
+                <span class="games-val" id="games-p2">0</span>
+            </div>
+            <div class="col-right" style="border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;">
+                <span class="points-val" id="points-p2">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="card-footer">
+        <div id="live-dot"></div>
+        <span class="footer-text">Aktualizuje sa v reálnom čase</span>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
+    import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBp51F1qmi1e_G1VxJKYp6JplN_KwVS6lU",
+        authDomain: "baselinebrain-i4gac.firebaseapp.com",
+        projectId: "baselinebrain-i4gac",
+        storageBucket: "baselinebrain-i4gac.firebasestorage.app",
+        messagingSenderId: "526707740062",
+        appId: "1:526707740062:web:a02fd9b946043b84339a8f",
+        measurementId: "G-LE1KV4TTJ6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const db = getFirestore(app);
+
+    const matchId = new URLSearchParams(location.search).get("id")
+        || window.location.pathname.split("/").filter(Boolean).pop()
+        || null;
+
+    if (!matchId) {
+        document.getElementById("status-text").textContent = "Chýba ID zápasu v URL.";
+        document.getElementById("status-text").className = "status-badge paused";
+    } else {
+        const matchRef = doc(db, "matches", matchId);
+        onSnapshot(matchRef, (snapshot) => {
+            if (!snapshot.exists()) {
+                document.getElementById("status-text").textContent = "Zápas nenájdený.";
+                document.getElementById("status-text").className = "status-badge paused";
+                return;
+            }
+            renderMatch(snapshot.data());
+        });
+    }
+
+    function renderMatch(data) {
+        const { info, score, status } = data;
+
+        // Mená hráčov
+        document.getElementById("p1-name").textContent = info.player1;
+        document.getElementById("p2-name").textContent = info.player2;
+
+        // Povrch
+        const surfaces = { clay: "Antuka 🔶", hard: "Tvrdý", grass: "Tráva 🌿" };
+        document.getElementById("surface").textContent = surfaces[info.surface] || info.surface;
+
+        // Sety
+        const setsRows = document.getElementById("sets-rows");
+        if (score.sets && score.sets.length > 0) {
+            let p1row = "", p2row = "";
+            score.sets.forEach((set) => {
+                const w1 = set[0] > set[1];
+                p1row += `<td style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:${w1 ? '#1a1208' : '#bbb'};padding:0 0.6rem;text-align:center;">${set[0]}</td>`;
+                p2row += `<td style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:${!w1 ? '#1a1208' : '#bbb'};padding:0 0.6rem;text-align:center;">${set[1]}</td>`;
+            });
+            setsRows.innerHTML = `
+                <table style="border-collapse:collapse;">
+                    <tr>
+                        <td style="font-size:0.8rem;color:#888;padding-right:0.5rem;font-family:'DM Sans',sans-serif;">${info.player1.split(" ").pop()}</td>
+                        ${p1row}
+                    </tr>
+                    <tr>
+                        <td style="font-size:0.8rem;color:#888;padding-right:0.5rem;font-family:'DM Sans',sans-serif;">${info.player2.split(" ").pop()}</td>
+                        ${p2row}
+                    </tr>
+                </table>`;
+            document.getElementById("sets-section").style.display = "";
+        } else {
+            document.getElementById("sets-section").style.display = "none";
+        }
+
+        // Gemy a body
+        document.getElementById("games-p1").textContent = score.games?.[0] ?? 0;
+        document.getElementById("games-p2").textContent = score.games?.[1] ?? 0;
+        document.getElementById("points-p1").textContent = score.points?.[0] ?? "0";
+        document.getElementById("points-p2").textContent = score.points?.[1] ?? "0";
+
+        // Podávač
+        const s = score.serving ?? 0;
+        document.getElementById("serve-p1").style.opacity = s === 0 ? "1" : "0";
+        document.getElementById("serve-p2").style.opacity = s === 1 ? "1" : "0";
+
+        // Stav zápasu
+        const stEl = document.getElementById("status-text");
+        if (status.state === "finished") {
+            const winner = status.winner === 0 ? info.player1 : info.player2;
+            stEl.textContent = `🏆 ${winner.split(" ").pop()}`;
+            stEl.className = "status-badge finished";
+            document.getElementById("live-dot").style.display = "none";
+        } else if (status.state === "paused") {
+            stEl.textContent = "Prestávka";
+            stEl.className = "status-badge paused";
+            document.getElementById("live-dot").style.display = "none";
+        } else {
+            stEl.textContent = "LIVE";
+            stEl.className = "status-badge live";
+            document.getElementById("live-dot").style.display = "";
+        }
+
+        // Animácia pri zmene skóre
+        const sb = document.getElementById("scoreboard");
+        if (sb) {
+            sb.classList.add("updated");
+            setTimeout(() => sb.classList.remove("updated"), 300);
+        }
+    }
+</script>
+
+</body>
+</html>

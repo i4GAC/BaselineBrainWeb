@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baseline Brain Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e8e8f0;
+    --muted: #6b6e82;
+    --accent: #f0c040;
+    --red: #e05252;
+    --green: #52c07a;
+    --clay: #c4622d;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  header {
+    max-width: 700px;
+    margin: 0 auto 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  header p { font-size: 0.8rem; color: var(--muted); }
+
+  /* Login */
+  #login-screen {
+    max-width: 340px;
+    margin: 6rem auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2rem;
+  }
+  #login-screen h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 1.2rem;
+  }
+  .field { margin-bottom: 1rem; }
+  .field label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.35rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    padding: 0.6rem 0.8rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    outline: none;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .err { font-size: 0.8rem; color: var(--red); margin-top: 0.75rem; min-height: 1.2em; }
+
+  /* Buttons */
+  button {
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    border: none;
+    border-radius: 4px;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #111;
+    padding: 0.65rem 1.4rem;
+    font-size: 0.9rem;
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+  .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+
+  .btn-delete {
+    background: transparent;
+    color: var(--red);
+    border: 1px solid var(--red);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+  }
+  .btn-delete:hover:not(:disabled) { background: var(--red); color: white; }
+
+  .btn-delete-all {
+    background: var(--red);
+    color: white;
+    padding: 0.5rem 1.2rem;
+    font-size: 0.82rem;
+  }
+  .btn-delete-all:hover:not(:disabled) { opacity: 0.85; }
+
+  .btn-refresh {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    font-size: 0.82rem;
+  }
+  .btn-refresh:hover { color: var(--text); border-color: var(--muted); }
+
+  /* Main panel */
+  #main-panel { max-width: 700px; margin: 0 auto; display: none; }
+
+  .toolbar {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .toolbar .count {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-left: auto;
+  }
+
+  /* Filter */
+  .filter-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 0.3rem 0.8rem;
+    font-size: 0.78rem;
+    border-radius: 20px;
+  }
+  .filter-btn.active { background: var(--accent); color: #111; border-color: var(--accent); }
+
+  /* Match cards */
+  #matches-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+  .match-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+    transition: border-color 0.2s;
+  }
+  .match-card:hover { border-color: #3a3d4a; }
+  .match-card.deleting { opacity: 0.4; pointer-events: none; }
+
+  .match-players {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .match-players .vs { color: var(--muted); font-weight: 300; margin: 0 0.4rem; font-size: 0.85rem; }
+
+  .match-meta {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 0.3rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .match-meta span {
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+  .badge {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .badge.live { background: #e53e3e22; color: #e57070; border: 1px solid #e53e3e44; }
+  .badge.finished { background: #52c07a22; color: var(--green); border: 1px solid #52c07a44; }
+  .badge.paused { background: #71809622; color: #a0aec0; border: 1px solid #71809644; }
+
+  .match-score { font-size: 0.8rem; color: var(--muted); font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
+
+  /* Empty / loading */
+  .empty {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .empty .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+  /* Confirm modal */
+  #modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  #modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.8rem;
+    max-width: 340px;
+    width: 90%;
+  }
+  .modal h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+  .modal p { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.4rem; line-height: 1.5; }
+  .modal-buttons { display: flex; gap: 0.75rem; }
+  .btn-cancel {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 0.55rem 1.1rem;
+    font-size: 0.85rem;
+    flex: 1;
+  }
+  .btn-confirm-delete {
+    background: var(--red);
+    color: white;
+    padding: 0.55rem 1.1rem;
+    font-size: 0.85rem;
+    flex: 1;
+  }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <h2>🎾 Tennis Admin</h2>
+  <div class="field">
+    <label>Heslo</label>
+    <input type="password" id="password-input" placeholder="••••••••" />
+  </div>
+  <div class="err" id="login-err"></div>
+  <button class="btn-primary" onclick="login()">Prihlásiť sa</button>
+</div>
+
+<!-- Main panel -->
+<div id="main-panel">
+  <header>
+    <div>
+      <h1>🎾 Tennis Admin</h1>
+      <p>Správa zápasov — baselinebrain-96644</p>
+    </div>
+    <button class="btn-refresh" onclick="loadMatches()">↻ Obnoviť</button>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn-delete-all" onclick="confirmDeleteAll()">🗑 Zmazať všetky dokončené</button>
+    <span class="count" id="match-count"></span>
+  </div>
+
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="setFilter('all', this)">Všetky</button>
+    <button class="filter-btn" onclick="setFilter('live', this)">Live</button>
+    <button class="filter-btn" onclick="setFilter('finished', this)">Dokončené</button>
+    <button class="filter-btn" onclick="setFilter('paused', this)">Prestávka</button>
+  </div>
+
+  <div id="matches-list">
+    <div class="empty"><div class="icon">⏳</div>Načítavam...</div>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Potvrdiť zmazanie</h3>
+    <p id="modal-desc">Táto akcia sa nedá vrátiť späť.</p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">Zrušiť</button>
+      <button class="btn-confirm-delete" id="modal-confirm-btn">Zmazať</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+  import { getDatabase, ref, get, remove, child } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCs6bQENGQipXsNR3xDQxCWIR2hXkFtLzI",
+    authDomain: "baselinebrain-96644.firebaseapp.com",
+    databaseURL: "https://baselinebrain-96644-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "baselinebrain-96644",
+    storageBucket: "baselinebrain-96644.firebasestorage.app",
+    messagingSenderId: "654018821203",
+    appId: "1:654018821203:web:eab54ec713dfd6226cdaa6",
+    measurementId: "G-X5J2YZMXL3",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // 🔐 Jednoduché heslo — zmeň si ho
+  const ADMIN_PASSWORD = "tenis2024";
+
+  let allMatches = [];
+  let currentFilter = "all";
+
+  // --- Login ---
+  window.login = function() {
+    const val = document.getElementById("password-input").value;
+    if (val === ADMIN_PASSWORD) {
+      document.getElementById("login-screen").style.display = "none";
+      document.getElementById("main-panel").style.display = "block";
+      loadMatches();
+    } else {
+      document.getElementById("login-err").textContent = "Nesprávne heslo.";
+    }
+  };
+
+  document.getElementById("password-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") window.login();
+  });
+
+  // --- Načítanie zápasov ---
+  window.loadMatches = async function() {
+    document.getElementById("matches-list").innerHTML =
+      '<div class="empty"><div class="icon">⏳</div>Načítavam...</div>';
+
+    try {
+      const snapshot = await get(ref(db, "matches"));
+      if (!snapshot.exists()) {
+        allMatches = [];
+        renderMatches();
+        return;
+      }
+
+      allMatches = Object.entries(snapshot.val()).map(([id, data]) => ({
+        id,
+        ...data
+      }));
+
+      // Zoraď od najnovšieho
+      allMatches.sort((a, b) => (b.info?.createdAt || 0) - (a.info?.createdAt || 0));
+      renderMatches();
+    } catch (e) {
+      document.getElementById("matches-list").innerHTML =
+        `<div class="empty"><div class="icon">⚠️</div>Chyba pri načítaní: ${e.message}</div>`;
+    }
+  };
+
+  // --- Filter ---
+  window.setFilter = function(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    renderMatches();
+  };
+
+  // --- Render ---
+  function renderMatches() {
+    const filtered = currentFilter === "all"
+      ? allMatches
+      : allMatches.filter(m => m.status?.state === currentFilter);
+
+    document.getElementById("match-count").textContent =
+      `${filtered.length} / ${allMatches.length} zápasov`;
+
+    if (filtered.length === 0) {
+      document.getElementById("matches-list").innerHTML =
+        '<div class="empty"><div class="icon">🎾</div>Žiadne zápasy</div>';
+      return;
+    }
+
+    document.getElementById("matches-list").innerHTML = filtered.map(m => {
+      const p1 = m.info?.player1 || "?";
+      const p2 = m.info?.player2 || "?";
+      const state = m.status?.state || "unknown";
+      const surface = { clay: "🔶 Antuka", hard: "⬜ Tvrdý", grass: "🌿 Tráva" }[m.info?.surface] || m.info?.surface || "";
+      const date = m.info?.createdAt
+        ? new Date(m.info.createdAt * 1000).toLocaleString("sk-SK", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" })
+        : "—";
+
+      // Skóre setov
+      const sets = (m.score?.sets || []).map(s => `${s[0]}:${s[1]}`).join("  ");
+      const games = m.score?.games ? `${m.score.games[0]}:${m.score.games[1]}` : "";
+
+      const badgeLabel = { live: "LIVE", finished: "Koniec", paused: "Prestávka" }[state] || state;
+
+      return `
+        <div class="match-card" id="card-${m.id}">
+          <div>
+            <div class="match-players">
+              ${p1} <span class="vs">vs</span> ${p2}
+            </div>
+            <div class="match-meta">
+              <span class="badge ${state}">${badgeLabel}</span>
+              ${sets ? `<span class="match-score">${sets}${games ? "  [" + games + "]" : ""}</span>` : ""}
+              <span>${surface}</span>
+              <span>${date}</span>
+              <span style="color:#444;font-size:0.65rem;">${m.id}</span>
+            </div>
+          </div>
+          <button class="btn-delete" onclick="confirmDelete('${m.id}', '${p1} vs ${p2}')">Zmazať</button>
+        </div>`;
+    }).join("");
+  }
+
+  // --- Mazanie jedného ---
+  window.confirmDelete = function(matchId, label) {
+    showModal(
+      `Zmazať zápas?`,
+      `${label}\n\nTáto akcia sa nedá vrátiť späť.`,
+      async () => {
+        const card = document.getElementById(`card-${matchId}`);
+        if (card) card.classList.add("deleting");
+        await remove(ref(db, `matches/${matchId}`));
+        allMatches = allMatches.filter(m => m.id !== matchId);
+        renderMatches();
+      }
+    );
+  };
+
+  // --- Mazanie všetkých dokončených ---
+  window.confirmDeleteAll = function() {
+    const finished = allMatches.filter(m => m.status?.state === "finished");
+    if (finished.length === 0) {
+      alert("Žiadne dokončené zápasy na zmazanie.");
+      return;
+    }
+    showModal(
+      `Zmazať ${finished.length} dokončených zápasov?`,
+      `Zmažú sa všetky zápasy so stavom "Koniec". Táto akcia sa nedá vrátiť späť.`,
+      async () => {
+        for (const m of finished) {
+          await remove(ref(db, `matches/${m.id}`));
+        }
+        allMatches = allMatches.filter(m => m.status?.state !== "finished");
+        renderMatches();
+      }
+    );
+  };
+
+  // --- Modal ---
+  let pendingAction = null;
+
+  function showModal(title, desc, onConfirm) {
+    document.getElementById("modal-title").textContent = title;
+    document.getElementById("modal-desc").textContent = desc;
+    pendingAction = onConfirm;
+    document.getElementById("modal-overlay").classList.add("show");
+    document.getElementById("modal-confirm-btn").onclick = async () => {
+      closeModal();
+      if (pendingAction) await pendingAction();
+    };
+  }
+
+  window.closeModal = function() {
+    document.getElementById("modal-overlay").classList.remove("show");
+    pendingAction = null;
+  };
+
+  document.getElementById("modal-overlay").addEventListener("click", e => {
+    if (e.target === document.getElementById("modal-overlay")) closeModal();
+  });
+</script>
+
+</body>
+</html>
