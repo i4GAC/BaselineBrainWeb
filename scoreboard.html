@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BaselineBrain · Scoreboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --clay: #c4622d;
+            --clay-dark: #8b3d17;
+            --net: #f5e6d3;
+            --white: #fdfaf7;
+            --dark: #1a1208;
+            --accent: #f0c040;
+            --live: #e53e3e;
+        }
+
+        body {
+            background: var(--clay);
+            min-height: 100vh;
+            font-family: 'DM Sans', sans-serif;
+            padding: 1rem;
+            background-image:
+                repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px),
+                repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
+        }
+
+        /* ── HEADER ── */
+        .page-header {
+            max-width: 680px;
+            margin: 0 auto 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .page-header h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            color: var(--white);
+            font-size: 1.8rem;
+            letter-spacing: 0.15em;
+        }
+        .page-header h1 span {
+            color: var(--accent);
+        }
+
+        /* ── CONTROLS ── */
+        .controls {
+            max-width: 680px;
+            margin: 0 auto 1.2rem;
+            background: rgba(0,0,0,0.18);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            flex: 1;
+            min-width: 140px;
+        }
+        .control-group label {
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.6);
+            font-weight: 600;
+        }
+        .control-group input,
+        .control-group select {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: var(--white);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            padding: 0.45rem 0.65rem;
+            outline: none;
+            width: 100%;
+            -webkit-appearance: none;
+        }
+        .control-group input::-webkit-calendar-picker-indicator {
+            filter: invert(1) opacity(0.6);
+        }
+        .control-group select option {
+            background: #3a1a08;
+            color: white;
+        }
+        .btn-refresh {
+            background: var(--accent);
+            color: var(--dark);
+            border: none;
+            border-radius: 6px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 0.5rem 1.1rem;
+            cursor: pointer;
+            white-space: nowrap;
+            align-self: flex-end;
+            height: 36px;
+        }
+        .btn-refresh:hover { opacity: 0.85; }
+
+        /* ── TIMEZONE NOTE ── */
+        .tz-note {
+            max-width: 680px;
+            margin: -0.5rem auto 1rem;
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.45);
+            text-align: right;
+        }
+
+        /* ── MATCH CARDS ── */
+        #matches-list {
+            max-width: 680px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .match-card {
+            background: var(--white);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            text-decoration: none;
+            display: block;
+            color: inherit;
+        }
+        .match-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 36px rgba(0,0,0,0.3);
+        }
+
+        .card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.55rem 0.9rem;
+            background: var(--dark);
+            gap: 0.5rem;
+        }
+        .card-top-left {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            min-width: 0;
+        }
+        .tournament-label {
+            font-size: 0.65rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.55);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .surface-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .surface-clay    { background: #c4622d; }
+        .surface-hard    { background: #4a90d9; }
+        .surface-grass   { background: #5aab4a; }
+        .surface-indoor  { background: #9b59b6; }
+        .surface-carpet  { background: #888; }
+        .surface-artificial { background: #16a085; }
+
+        .status-badge {
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            padding: 0.2rem 0.55rem;
+            border-radius: 3px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+        .badge-live     { background: var(--live); color: white; animation: pulse-badge 1.5s infinite; }
+        .badge-paused   { background: #718096; color: white; }
+        .badge-finished { background: var(--accent); color: var(--dark); }
+
+        @keyframes pulse-badge {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.65; }
+        }
+
+        /* ── SCORE BODY ── */
+        .card-body {
+            padding: 0.7rem 0.9rem;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.2rem 1rem;
+            align-items: center;
+        }
+
+        .player-name {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .serve-dot {
+            width: 7px; height: 7px;
+            background: var(--accent);
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 5px var(--accent);
+        }
+        .score-cell {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            color: var(--clay);
+            text-align: right;
+            white-space: nowrap;
+        }
+        .score-cell.winner {
+            color: var(--dark);
+        }
+
+        /* ── EMPTY / LOADING STATES ── */
+        .state-msg {
+            max-width: 680px;
+            margin: 2rem auto;
+            text-align: center;
+            color: rgba(255,255,255,0.55);
+            font-size: 0.95rem;
+        }
+        .state-msg .icon {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        /* ── FOOTER ── */
+        .page-footer {
+            max-width: 680px;
+            margin: 1.5rem auto 0;
+            text-align: center;
+            font-size: 0.68rem;
+            color: rgba(255,255,255,0.3);
+            letter-spacing: 0.04em;
+        }
+
+        @media (max-width: 440px) {
+            .player-name { font-size: 0.88rem; }
+            .score-cell  { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page-header">
+        <h1>🎾 <span>Baseline</span>Brain · Scoreboard</h1>
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="controls">
+        <div class="control-group">
+            <label>Dátum (váš čas)</label>
+            <input type="date" id="date-picker">
+        </div>
+        <div class="control-group">
+            <label>Turnaj</label>
+            <select id="tournament-filter">
+                <option value="">— Všetky zápasy —</option>
+            </select>
+        </div>
+        <button class="btn-refresh" onclick="loadMatches()">↺ Obnoviť</button>
+    </div>
+    <div class="tz-note" id="tz-note"></div>
+
+    <!-- MATCH LIST -->
+    <div id="matches-list">
+        <div class="state-msg"><span class="icon">⏳</span>Načítavam…</div>
+    </div>
+
+    <div class="page-footer">
+        Dáta sa aktualizujú v reálnom čase · <span id="last-update"></span>
+    </div>
+
+<script type="module">
+import { initializeApp }    from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getAnalytics }     from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
+import { getFirestore, collection, query, where, onSnapshot, orderBy }
+                            from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+
+// ── Firebase config ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+    apiKey:            "AIzaSyBp51F1qmi1e_G1VxJKYp6JplN_KwVS6lU",
+    authDomain:        "baselinebrain-i4gac.firebaseapp.com",
+    projectId:         "baselinebrain-i4gac",
+    storageBucket:     "baselinebrain-i4gac.firebasestorage.app",
+    messagingSenderId: "526707740062",
+    appId:             "1:526707740062:web:a02fd9b946043b84339a8f",
+    measurementId:     "G-LE1KV4TTJ6"
+};
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const db  = getFirestore(app);
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+// Converts a JS Date to "yyyy-MM-dd" in UTC
+function toUTCDateStr(date) {
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(date.getUTCDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
+
+// Converts a JS Date to "yyyy-MM-dd" in LOCAL timezone (for display / default)
+function toLocalDateStr(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+}
+
+// Parse "yyyy-MM-dd" as LOCAL midnight → UTC range for that local day
+function localDayToUTCRange(localDateStr) {
+    const [y, mo, d] = localDateStr.split("-").map(Number);
+    const startLocal = new Date(y, mo - 1, d, 0, 0, 0, 0);
+    const endLocal   = new Date(y, mo - 1, d, 23, 59, 59, 999);
+    // Convert to UTC strings for Firebase query
+    const utcStart = toUTCDateStr(startLocal);
+    const utcEnd   = toUTCDateStr(endLocal);
+    return { utcStart, utcEnd };
+}
+
+const LIVE_MATCH_URL = "https://i4gac.github.io/BaselineBrainWeb/?id=";
+
+const surfaceColors = {
+    clay:       "surface-clay",
+    hard:       "surface-hard",
+    grass:      "surface-grass",
+    indoor:     "surface-indoor",
+    carpet:     "surface-carpet",
+    artificial: "surface-artificial"
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentUnsub = null;                  // Firestore listener cleanup
+let tournamentIndex = {};                 // { tournamentId: name }
+
+// ── Init date picker ──────────────────────────────────────────────────────────
+const datePicker = document.getElementById("date-picker");
+datePicker.value = toLocalDateStr(new Date());
+
+// Show user's timezone
+const tzName = Intl.DateTimeFormat().resolvedOptions().timeZone;
+document.getElementById("tz-note").textContent =
+    `Dátum je vo vašom časovom pásme: ${tzName}`;
+
+// ── Load matches ──────────────────────────────────────────────────────────────
+window.loadMatches = loadMatches;
+
+function loadMatches() {
+    if (currentUnsub) { currentUnsub(); currentUnsub = null; }
+
+    const localDate = datePicker.value;           // "yyyy-MM-dd" local
+    if (!localDate) return;
+
+    const { utcStart, utcEnd } = localDayToUTCRange(localDate);
+    const selectedTournament = document.getElementById("tournament-filter").value;
+
+    const list = document.getElementById("matches-list");
+    list.innerHTML = `<div class="state-msg"><span class="icon">⏳</span>Načítavam…</div>`;
+
+    // Build query — filter by UTC date range
+    // If same UTC day on both ends of the local day, use == ; otherwise use >= and <=
+    let q;
+    if (utcStart === utcEnd) {
+        q = query(
+            collection(db, "matches"),
+            where("info.date", "==", utcStart)
+        );
+    } else {
+        q = query(
+            collection(db, "matches"),
+            where("info.date", ">=", utcStart),
+            where("info.date", "<=", utcEnd)
+        );
+    }
+
+    currentUnsub = onSnapshot(q, (snapshot) => {
+        let docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Collect all tournament names for the filter dropdown
+        docs.forEach(m => {
+            const tid  = m.info?.tournamentId;
+            const tname = m.info?.tournament;
+            if (tid && tname) tournamentIndex[tid] = tname;
+        });
+        rebuildTournamentFilter();
+
+        // Filter by selected tournament
+        if (selectedTournament) {
+            docs = docs.filter(m => m.info?.tournamentId === selectedTournament);
+        }
+
+        // Sort: live first, then paused, then finished; within group by createdAt desc
+        const stateOrder = { live: 0, paused: 1, finished: 2 };
+        docs.sort((a, b) => {
+            const sa = stateOrder[a.status?.state] ?? 3;
+            const sb = stateOrder[b.status?.state] ?? 3;
+            if (sa !== sb) return sa - sb;
+            const ta = a.info?.createdAt?.seconds ?? 0;
+            const tb = b.info?.createdAt?.seconds ?? 0;
+            return tb - ta;
+        });
+
+        renderList(docs);
+
+        // Update footer timestamp
+        document.getElementById("last-update").textContent =
+            "Posledná aktualizácia: " + new Date().toLocaleTimeString();
+    }, (err) => {
+        console.error("Firestore error:", err);
+        document.getElementById("matches-list").innerHTML =
+            `<div class="state-msg"><span class="icon">❌</span>Chyba načítavania: ${err.message}</div>`;
+    });
+}
+
+// ── Render match list ─────────────────────────────────────────────────────────
+function renderList(docs) {
+    const list = document.getElementById("matches-list");
+    if (docs.length === 0) {
+        list.innerHTML = `<div class="state-msg"><span class="icon">🎾</span>Žiadne zápasy pre vybraný deň${document.getElementById("tournament-filter").value ? " a turnaj" : ""}.</div>`;
+        return;
+    }
+
+    list.innerHTML = docs.map(m => renderCard(m)).join("");
+}
+
+function renderCard(m) {
+    const info   = m.info   || {};
+    const score  = m.score  || {};
+    const status = m.status || {};
+
+    const state = status.state || "unknown";
+    const badgeClass = state === "live" ? "badge-live"
+                     : state === "paused"   ? "badge-paused"
+                     : "badge-finished";
+    const badgeLabel = state === "live"     ? "● LIVE"
+                     : state === "paused"   ? "Prestávka"
+                     : state === "finished" ? "Hotovo"
+                     : "?";
+
+    // Surface dot
+    const surfKey = (info.surface || "").toLowerCase();
+    const surfClass = surfaceColors[surfKey] || "surface-hard";
+
+    // Serving
+    const serving = score.serving ?? -1;  // 0=p1, 1=p2
+
+    // Score strings
+    const scoreA = buildScoreStr(score, 0, status);
+    const scoreB = buildScoreStr(score, 1, status);
+
+    const winnerA = status.winner === 0;
+    const winnerB = status.winner === 1;
+
+    // Tournament / court label
+    const tournLabel = info.tournament
+        ? `<span class="surface-dot ${surfClass}"></span><span class="tournament-label">${escHtml(info.tournament)}</span>`
+        : `<span class="surface-dot ${surfClass}"></span><span class="tournament-label">${escHtml(info.surface || "")}</span>`;
+
+    const href = `${LIVE_MATCH_URL}${m.id}`;
+
+    return `
+<a class="match-card" href="${href}" target="_blank">
+    <div class="card-top">
+        <div class="card-top-left">${tournLabel}</div>
+        <span class="status-badge ${badgeClass}">${badgeLabel}</span>
+    </div>
+    <div class="card-body">
+        <div class="player-name">
+            ${serving === 0 ? '<span class="serve-dot"></span>' : '<span style="width:7px;display:inline-block"></span>'}
+            ${escHtml(info.player1 || "Hráč 1")}
+            ${winnerA ? ' 🏆' : ''}
+        </div>
+        <div class="score-cell ${winnerA ? 'winner' : ''}">${scoreA}</div>
+        <div class="player-name">
+            ${serving === 1 ? '<span class="serve-dot"></span>' : '<span style="width:7px;display:inline-block"></span>'}
+            ${escHtml(info.player2 || "Hráč 2")}
+            ${winnerB ? ' 🏆' : ''}
+        </div>
+        <div class="score-cell ${winnerB ? 'winner' : ''}">${scoreB}</div>
+    </div>
+</a>`;
+}
+
+// Build compact score string: "6 6  3 | 40"  (sets · current games | current points)
+function buildScoreStr(score, playerIdx, status) {
+    const parts = [];
+
+    // Completed sets
+    const sets = score.sets || [];
+    sets.forEach(s => {
+        const val = playerIdx === 0 ? s.a : s.b;
+        parts.push(String(val ?? "?"));
+    });
+
+    // Current games (only if not finished)
+    if (status.state !== "finished") {
+        const games = score.games || [0, 0];
+        parts.push(String(games[playerIdx] ?? 0));
+
+        // Current points
+        const pts = score.points || ["0", "0"];
+        return parts.join("  ") + "  <span style='font-size:0.85em;opacity:0.7'>| " + escHtml(pts[playerIdx] ?? "0") + "</span>";
+    }
+
+    return parts.join("  ");
+}
+
+// ── Tournament filter ─────────────────────────────────────────────────────────
+function rebuildTournamentFilter() {
+    const sel = document.getElementById("tournament-filter");
+    const current = sel.value;
+    // Keep only the "all" option + rebuild from index
+    while (sel.options.length > 1) sel.remove(1);
+    Object.entries(tournamentIndex).forEach(([id, name]) => {
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = name;
+        if (id === current) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+datePicker.addEventListener("change", loadMatches);
+document.getElementById("tournament-filter").addEventListener("change", loadMatches);
+
+// ── XSS helper ───────────────────────────────────────────────────────────────
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+loadMatches();
+</script>
+
+</body>
+</html>
